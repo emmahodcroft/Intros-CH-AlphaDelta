@@ -15,4 +15,4 @@ Up to 10,000 global sequences that are most genetically similar to the Swiss seq
 4. The number of estimated introductions of Alpha & Delta into Switzerland is calculated based on a 'liberal' and 'conservative' approach (see paper for details) in [analyze_slices.py](scripts/analyze_slices.py). The number and dates of introductions are then fed into the transmission model.
 
 
-For Emma, the original repo is [here](https://github.com/emmahodcroft/2021_Delta).
+For Emma, the original repo is [here](https://github.com/emmahodcroft/2021_Delta). The original build auspice file names are ncov_20I.Alpha.V1-swiss-2021-03-31.json and ncov_21A.Delta-swiss-2021-07-31.json.
