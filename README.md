@@ -2,7 +2,7 @@
 
 This is a repository for code used in the manuscript "Importation of Alpha and Delta variants during the SARS-CoV-2 epidemic in Switzerland: phylogenetic analysis and intervention scenarios" by Martina L Reichmuth, Emma B Hodcroft, Julien Riou, and Christian L Althaus.
 
-How this code is used (see paper for more description):
+### How this code is used (see paper for more description):
 
 1. All Alpha (Nextstrain clade 20I) and Delta (Nextstrain clades 21A, 21I, and 21J) sequences sampled in Switzerland prior to 31 Mar 2021 and 31 July 2021, respectively, were selected, using [allClusterDynamics_faster.py](scripts/allClusterDynamics_faster.py) and [getClusterFiles.r](scripts/getClusterFiles.r).
 Note that allClusterDynamics.faster.py is from [CoVariants.org](https://covariants.org/) and an updated version can be found [at the CoVaraints github](https://github.com/hodcroftlab/covariants/blob/master/scripts/allClusterDynamics_faster.py).
@@ -15,4 +15,4 @@ Up to 10,000 global sequences that are most genetically similar to the Swiss seq
 4. The number of estimated introductions of Alpha & Delta into Switzerland is calculated based on a 'liberal' and 'conservative' approach (see paper for details) in [analyze_slices.py](scripts/analyze_slices.py). The number and dates of introductions are then fed into the transmission model.
 
 
-For Emma, the original repo is [here](https://github.com/emmahodcroft/2021_Delta).
+For Emma, the original repo (which includes data that can't be publicly shared) is [here](https://github.com/emmahodcroft/2021_Delta).
