@@ -374,32 +374,59 @@ def plot_introduction_statistics(node_countries, suffix, selected_countries):
 
 
 if __name__=="__main__":
+    import argparse
 
-    local_run = False
-    print_answer = input("\nIs this running locally? (y/n) (y=local, n=cluster): ")
-    if print_answer in ["y", "Y", "yes", "YES", "Yes"]:
-        local_run = True
+    parser = parser = argparse.ArgumentParser(description='collapse phylo tree into "pies" by country',
+                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parse.add_argument('--run-folder', help="results of Nextstrain run")
+    parse.add_argument('--variant-type', help="Specify whether Alpha or Delta build")
+    parse.add_argument('--nextstrain-metadata', help="Location of Nextstrain metadata to use")
+    args = parser.parse_args()
 
-    build = "Alpha"
-    print_build = input("What build to run? Alpha (A, a, alpha) or Delta (D, d, delta)? ")
-    if print_build in ["d", "D", "delta", "Delta", "DELTA"]:
-        build = "Delta"
-        
+    ##
+    #Input files
 
-    #metadatafile = "data_files/metadata.tsv" #"data_files/downloaded_gisaid.tsv"
-    #use this version to avoid copying around computer - 8GB!!
-    if local_run:
-        metadatafile = "../Projects/Swiss-Wengen/data/metadata.tsv"
-    else: #cluster run, use from ncov_2021_bern to save copying
-        metadatafile = "../ncov_2021_bern/data/metadata.tsv"
-    figure_path = "./figures/"
+    #if running from ncov_2021_AlphDelt, paths are:
+    # 21A.Delta-swiss_N-2021-07-31/
+    # 20I.Alpha.V1-swiss_N-2021-03-31/
+    #run_folder1 = "20I.Alpha.V1-swiss_1-2021-03-31" 
+    #run_folder2 = "21A.Delta-swiss_1-2021-07-31" 
+
+    run_folder = args.run_folder
+
+    #figure out metadata folder
+    #metadatafile = "../../ncov_2021_AlphDelt/data/metadata.tsv"
+    metadatafile = args.nextstrain_metadata
+
+    #figure out input files
+    alignfile = f"../ncov_2021_AlphDelt/results/{run_folder}/aligned.fasta" ##args.
+    treefile = f"../ncov_2021_AlphDelt/results/{run_folder}/tree.nwk"  ##args.
+
+    #Input params
+    #build = "Alpha" 
+    build = args.variant_type
+    #get run number #TODO how does this work with orig builds?
     if build == "Alpha":
-        alignfile = "data_files/Alpha/aligned.fasta"
-        treefile =  "data_files/Alpha/tree.nwk"
+        runNum = run_folder.replace("20I.Alpha.V1-swiss_","")
+        runNum = runNum.replace("-2021-03-31","")
     else:
-        alignfile = "data_files/Delta/aligned.fasta"
-        treefile =  "data_files/Delta/tree.nwk"
-    #untilNov=False
+        runNum = run_folder.replace("21A.Delta-swiss_","")
+        runNum = runNum.replace("-2021-07-31","")
+
+    ##
+    #Output files
+    output_folder = "results/{build}"
+    figure_path = "results/{build}/figures/"
+    tree_path = "results/{build}/trees/"
+    if not os.path.isdir(output_folder):
+        print(f"Couldn't find folder {output_folder} - creating it.\n")
+        os.mkdir(output_folder)
+        os.mkdir(figure_path)
+        os.mkdir(tree_path)
+    else:
+        print(f"Output folder ({output_folder}) already exists. Please rename current one or delete it.")
+        raise KeyboardInterrupt
+
 
     #figure this out now so we don't waste time in treetime refine then find out file is missing...
     for fi in [metadatafile, alignfile, treefile]:
@@ -408,27 +435,16 @@ if __name__=="__main__":
             print(fi)
             sys.exit()
 
-
-    #For November 30 data
-    #if untilNov:
-    #    alignfile =  "gisaid_data/subsampled_alignment-2020-11-30.fasta"
-    #    nt_muts =    "through_Nov_data/dummy_node_data.json"
-    #    treefile =   "through_Nov_data/tree-2020-11-30.nwk"
-    #else:
-    # For Sept 30 data
-    #    alignfile = "gisaid_data/subsampled_alignment-2020-09-30.fasta"
-    #    nt_muts =   "through_Sep_data/dummy_node_data.json"
-    #    treefile =  "through_Sep_data/tree-2020-09-30.nwk"
+    print("all files successfully accounted for")
+    sys.exit()
 
     ###############################
     ###############################
 
-    #this has to be set manually
-    #start = names['NODE_0001008'] #["NODE_0000814"]  # ["NODE_0003268"]   #["NODE_0002406"]
-    #start = names['NODE_0004656']#['NODE_0002374'] #['NODE_0001979'] #['NODE_0001981']
     T_backup = read_tree(treefile, metadatafile, alignfile=alignfile)
 
     # find the focal cluster root
+    #this has to be set semi-manually by mutation
     start = find_root(T_backup, build) #send build so know what mutation to use
     print("have found cluster root")
     ######## RERUN FROM HERE
@@ -438,8 +454,11 @@ if __name__=="__main__":
     names = lookup_by_names(T)
 
     #write out copy
-    Phylo.write(T_backup, f"treeFiles/{build}/treePreSubtree.nwk", "newick")
-    Phylo.write(T_backup, f"treeFiles/{build}/treePreSubtree.xml", "phyloxml")
+    #Phylo.write(T_backup, f"treeFiles/{build}/treePreSubtree.nwk", "newick")
+    #Phylo.write(T_backup, f"treeFiles/{build}/treePreSubtree.xml", "phyloxml")
+    Phylo.write(T_backup, f"{tree_path}treePreSubtree{runNum}.nwk", "newick")
+    Phylo.write(T_backup, f"{tree_path}treePreSubtree{runNum}.xml", "phyloxml")
+
 
     #Make a subtree of the cluster so we can just work with that
     cluster = T.from_clade(names[start.name])
@@ -470,8 +489,10 @@ if __name__=="__main__":
     node_counts = node_counts.fillna(0)
     node_counts = node_counts.sort_index()
 
-    Phylo.write(cT, f"treeFiles/{build}/treeSubtree.xml", "phyloxml")
-    Phylo.write(cT, f"treeFiles/{build}/treeSubtree.nwk", "newick")
+    #Phylo.write(cT, f"treeFiles/{build}/treeSubtree.xml", "phyloxml")
+    #Phylo.write(cT, f"treeFiles/{build}/treeSubtree.nwk", "newick")
+    Phylo.write(cT, f"{tree_path}treeSubtree{runNum}.xml", "phyloxml")
+    Phylo.write(cT, f"{tree_path}treeSubtree{runNum}.nwk", "newick")
 
     #save leaf data out to be accessed elsewhere
     final_node_data = defaultdict(dict)
@@ -479,7 +500,7 @@ if __name__=="__main__":
         final_node_data[leaf.name] = {"country": leaf.country, "division": leaf.division,
                                       "date": leaf.date}
     (pd.DataFrame.from_dict(data=final_node_data, orient='index')
-        .to_csv(f'treeFiles/{build}/tree_data.csv', header=True))
+        .to_csv(f'{tree_path}tree_data{runNum}.csv', header=True))
 
 
     #generate_putative_introduction_clusters(cT, node_counts, f"through_{'Nov' if untilNov else 'Sep'}_data/pie_slices.json")
@@ -489,6 +510,6 @@ if __name__=="__main__":
     cluster2 = copy.deepcopy(cT)
 
     #node_countries = make_pie_tree(cluster2, node_counts, f"figures/pie_tree_{'Nov' if untilNov else 'Sep'}.{fmt}")
-    node_countries, node_names = make_pie_tree(cluster2, node_counts, f"figures/{build}/pie_tree.{fmt}", selected_countries)
+    node_countries, node_names = make_pie_tree(cluster2, node_counts, f"{figure_path}pie_tree{runNum}.{fmt}", selected_countries)
 
     plot_introduction_statistics(node_countries, build, selected_countries)
