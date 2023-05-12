@@ -8,7 +8,9 @@
 fmt = 'pdf'
 import os, sys
 from Bio import Phylo
-from augur.utils import read_metadata, read_node_data
+from augur.utils import read_metadata, read_node_data  #for older versions of augur - for newer need the below
+#from augur.utils import read_node_data
+#from augur.io import read_metadata
 from augur.export_v2 import parse_node_data_and_metadata
 import treetime
 from collections import Counter
@@ -353,7 +355,7 @@ def plot_introduction_statistics(node_countries, suffix, selected_countries):
     plt.yscale('log')
     plt.xscale('log')
     plt.legend()
-    plt.savefig(figure_path + f"resampling_introductions_{suffix}.{fmt}")
+    plt.savefig(figure_path + f"resampling_introductions_{suffix}{runNum}.{fmt}")
 
     plt.figure(figsize=(6.5,4))
     for country in selected_countries:
@@ -370,7 +372,7 @@ def plot_introduction_statistics(node_countries, suffix, selected_countries):
     plt.xscale('log')
     plt.legend(ncol=2)
     plt.tight_layout()
-    plt.savefig(figure_path + f"cluster_sizes_{suffix}.{fmt}")
+    plt.savefig(figure_path + f"cluster_sizes_{suffix}{runNum}.{fmt}")
 
 
 if __name__=="__main__":
@@ -378,9 +380,9 @@ if __name__=="__main__":
 
     parser = parser = argparse.ArgumentParser(description='collapse phylo tree into "pies" by country',
                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parse.add_argument('--run-folder', help="results of Nextstrain run")
-    parse.add_argument('--variant-type', help="Specify whether Alpha or Delta build")
-    parse.add_argument('--nextstrain-metadata', help="Location of Nextstrain metadata to use")
+    parser.add_argument('--run-folder', help="results of Nextstrain run")
+    parser.add_argument('--variant-type', help="Specify whether Alpha or Delta build")
+    parser.add_argument('--nextstrain-metadata', help="Location of Nextstrain metadata to use")
     args = parser.parse_args()
 
     ##
@@ -399,8 +401,8 @@ if __name__=="__main__":
     metadatafile = args.nextstrain_metadata
 
     #figure out input files
-    alignfile = f"../ncov_2021_AlphDelt/results/{run_folder}/aligned.fasta" ##args.
-    treefile = f"../ncov_2021_AlphDelt/results/{run_folder}/tree.nwk"  ##args.
+    alignfile = f"../../ncov_2021_AlphDelt/results/{run_folder}/filtered.fasta" #use this to match number of seqs in tree!
+    treefile = f"../../ncov_2021_AlphDelt/results/{run_folder}/tree.nwk"  
 
     #Input params
     #build = "Alpha" 
@@ -415,17 +417,25 @@ if __name__=="__main__":
 
     ##
     #Output files
-    output_folder = "results/{build}"
-    figure_path = "results/{build}/figures/"
-    tree_path = "results/{build}/trees/"
+    output_folder = f"results/{build}/"
+    figure_path = f"results/{build}/figures/"
+    tree_path = f"results/{build}/trees/"
+    data_path = f"results/{build}/out_data/"
     if not os.path.isdir(output_folder):
-        print(f"Couldn't find folder {output_folder} - creating it.\n")
+        print(f"\nCouldn't find folder {output_folder} - creating it.\n")
+        if not os.path.isdir("results"):
+            os.mkdir("results")
+    if not os.path.isdir(output_folder):
         os.mkdir(output_folder)
+    if not os.path.isdir(figure_path):
         os.mkdir(figure_path)
+    if not os.path.isdir(tree_path):
         os.mkdir(tree_path)
-    else:
-        print(f"Output folder ({output_folder}) already exists. Please rename current one or delete it.")
-        raise KeyboardInterrupt
+    if not os.path.isdir(data_path):
+        os.mkdir(data_path)
+    #else:
+    #    print(f"\nOutput folder ({output_folder}) already exists. Please rename current one or delete it.\n")
+    #    raise KeyboardInterrupt
 
 
     #figure this out now so we don't waste time in treetime refine then find out file is missing...
@@ -435,8 +445,6 @@ if __name__=="__main__":
             print(fi)
             sys.exit()
 
-    print("all files successfully accounted for")
-    sys.exit()
 
     ###############################
     ###############################
@@ -504,7 +512,7 @@ if __name__=="__main__":
 
 
     #generate_putative_introduction_clusters(cT, node_counts, f"through_{'Nov' if untilNov else 'Sep'}_data/pie_slices.json")
-    generate_putative_introduction_clusters(cT, node_counts, f"out_data/{build}/pie_slices.json")
+    generate_putative_introduction_clusters(cT, node_counts, f"{data_path}pie_slices{runNum}.json")
 
     #Copy our cluster, and then delete/collapse all the tips! (for plotting)
     cluster2 = copy.deepcopy(cT)
