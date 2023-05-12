@@ -3,6 +3,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# results files should stay private
+results/
+#logs files don't need to be synced
+logs/
+
 # C extensions
 *.so
 
