@@ -25,19 +25,20 @@ def get_mean_date(dates):
     return datetime.fromtimestamp(mn)
 
 #recursively print swiss parent nodes and parents - also number them
-def printNodeAndChildren(tabs, node, clusterNumber):
+def printNodeAndChildren(tabs, node, clusterNumber, print_nodes):
     global parentsToShow
     #if child is not in parent list, we are done - just assign number
     if node not in parentsToShow:
         names[node].cladeNum = clusterNumber
         return
-    print(tabs*"\t",node,parentList[node], clusterNumber)
+    if print_nodes:
+        print(tabs*"\t",node,parentList[node], clusterNumber)
     for no in parentList[node]: #try assigning to children
         names[no].cladeNum = clusterNumber 
     names[node].cladeNum = clusterNumber
     parentsToShow.remove(node)
     for c in parentList[node]:
-        printNodeAndChildren(tabs+1, c, clusterNumber)
+        printNodeAndChildren(tabs+1, c, clusterNumber, print_nodes)
 
 #######################
 
@@ -207,8 +208,8 @@ if __name__=="__main__":
             node = childList[node]
         if node in parentsToShow:
             rootParents.append(node)
+            printNodeAndChildren(0, node, clusterNumber, args.print_nodes)
             if(args.print_nodes):
-                printNodeAndChildren(0, node, clusterNumber)
                 print("")
             clusterNumber += 1
 
@@ -296,13 +297,89 @@ if __name__=="__main__":
     #(pd.DataFrame.from_dict(data=liberalClusterInfo, orient='index')
     #    .to_csv('liberalClusters.csv', header=True))
 
-    conservativeClusterInfo = defaultdict(dict)
-    #use the entries from before with no (null/NA) cluster number
-    swissOnlyInfo = liberalClusterDF[liberalClusterDF.isnull().Clade]
-    #ane entries from before who are heads of cluster
-    clusterHeadInfo = liberalClusterDF[liberalClusterDF.notnull().HeadOfClade]
 
-    conservClusterDF = pd.concat([swissOnlyInfo, clusterHeadInfo])
+
+    #### Now re-do for conservative
+
+
+    #Can take the entries with no cluster number as before.
+    #find the nodes that are heads of cluster and reprocess these, including all children
+
+    #first find all the head nodes and ready to cycle through
+    clusterHeadInfo = liberalClusterDF[liberalClusterDF.notnull().HeadOfClade]
+    headNodeNumbers = clusterHeadInfo.index.values
+
+    conservClusterInfo = defaultdict(dict)
+
+    #cycle through all head noes
+    for k in headNodeNumbers:
+        v = data["Switzerland"][k]
+
+        #record clade number
+        cl = names[k].cladeNum if hasattr(names[k], "cladeNum") else pd.NA
+        #find out if 'top' of clade
+        headClusterNode = True if k in rootParents else pd.NA
+        if headClusterNode == False:
+            print(f"Error! not head of node! {k}")
+
+        directChildren = v['sequences']
+        numberDirectChildren = len(directChildren)
+
+        #get all child nodes of this node
+        allClusNodes = liberalClusterDF[liberalClusterDF['Clade'] == cl].index.values
+        childNodes = [c for c in allClusNodes if c != k]
+
+        clusChilds = []
+        for child in childNodes:
+            v2 = data["Switzerland"][child]
+            clusChilds.extend(v2['sequences'])
+
+        # add all children together
+        allChilds = []
+        allChilds.extend(directChildren)
+        allChilds.extend(clusChilds)
+        numberAllChildren = len(allChilds)
+
+        #get information about all children
+        datesAllChilds = [datetime.strptime(names[ch].date, "%Y-%m-%d") for ch in allChilds]
+        meanDate = get_mean_date(datesAllChilds).strftime("%Y-%m-%d")
+        minDate = min(datesAllChilds).strftime("%Y-%m-%d")
+        maxDate = max(datesAllChilds).strftime("%Y-%m-%d")
+        allSwissDates = [d.strftime("%Y-%m-%d") for d in datesAllChilds]
+        #get canton stats
+        canton_dict = dict(Counter([names[ch].division for ch in allChilds]))
+        child_cantons = ', '.join(['{}: {}'.format(*i) for i in canton_dict.items()])
+
+        # don't get info about other children --- too complex 
+
+        conservClusterInfo[k] = {
+            "Clade": cl,
+            "HeadOfClade": headClusterNode,
+            "NumberSwissChildren": numberAllChildren,
+            "TotalNumberChildren": numberAllChildren,
+
+            "MeanDateSwissChildren": meanDate,
+            "MinDateSwissChildren": minDate,
+            "MaxDateSwissChildren": maxDate,
+            "CantonsSwissChildren": child_cantons,
+
+            "NonSwissChildrenCountries": "",
+            "MeanDateNonSwissChildren": "",
+            "MinDateNonSwissChildren": "",
+            "MaxDateNonSwissChildren": "",
+
+            "TotalDatesSwissChildren": allSwissDates,
+        }
+
+    #convert to dataframe
+    conservativeClusterDF = pd.DataFrame.from_dict(data=conservClusterInfo, orient='index')
+    # add those entries that are from before with no (null/NA) cluster number
+    swissOnlyInfo = liberalClusterDF[liberalClusterDF.isnull().Clade]
+    # add them together to what we have already
+    conservClusterDF = pd.concat([swissOnlyInfo, conservativeClusterDF])
+
+
+    #output to file
     conservClusterDF.sort_values(by=["Clade","HeadOfClade"]).to_csv(conserv_file_dates, header=True)
     conservClusterDF.drop("TotalDatesSwissChildren", axis=1, inplace=True)
     conservClusterDF.sort_values(by=["Clade","HeadOfClade"]).to_csv(conserv_file, header=True)
